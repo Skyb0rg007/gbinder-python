@@ -42,6 +42,11 @@ cdef class RemoteObject:
         if self._object is not NULL:
             cgbinder.gbinder_remote_object_ref(self._object)
 
+    cdef take_c_object(self, cgbinder.GBinderRemoteObject* remote):
+        # For libgbinder calls that return a new reference (the read_object
+        # family): adopt it instead of taking another one.
+        self._object = remote
+
     def __dealloc__(self):
         if self._object is not NULL:
             cgbinder.gbinder_remote_object_unref(self._object)
@@ -152,7 +157,7 @@ cdef class RemoteReply:
         cdef RemoteObject remote = None
         if c_object is not NULL:
             remote = RemoteObject()
-            remote.set_c_object(c_object)
+            remote.take_c_object(c_object)
 
         return remote
 
@@ -481,7 +486,7 @@ cdef class RemoteRequest:
         cdef RemoteObject remote = None
         if c_object is not NULL:
             remote = RemoteObject()
-            remote.set_c_object(c_object)
+            remote.take_c_object(c_object)
 
         return remote
 
@@ -928,13 +933,13 @@ cdef class Reader:
         cdef bint status
         status = cgbinder.gbinder_reader_read_nullable_object(&self._reader, &obj)
         remote = RemoteObject()
-        remote.set_c_object(obj)
+        remote.take_c_object(obj)
         return status, remote
 
     def read_object(self):
         cdef cgbinder.GBinderRemoteObject* obj = cgbinder.gbinder_reader_read_object(&self._reader)
         remote = RemoteObject()
-        remote.set_c_object(obj)
+        remote.take_c_object(obj)
         return remote
 
     def read_buffer(self):
